@@ -1,0 +1,39 @@
+image: node:18
+pipelines:
+  branches:
+    master:
+      - step:
+          name: Build
+          caches:
+            - node
+          script:
+            - npm install
+            - npm run build
+          artifacts:
+            - dist/**
+      - step:
+          name: Remove Build Folder
+          script:
+            - ssh $USER@$SERVER "sudo rm -rf /var/www/html/videosmergenestjs/dist"
+      - step:
+          name: Add Build Folder
+          script:
+            - ssh $USER@$SERVER "sudo mkdir /var/www/html/videosmergenestjs/dist"
+      - step:
+          name: Add Folder Permission
+          script:
+            - ssh $USER@$SERVER "sudo chmod 777 /var/www/html/videosmergenestjs/dist"
+      - step:
+          name: Deploy artifacts using SCP to PROD 
+          deployment: production
+          script:
+            - pipe: atlassian/scp-deploy:0.3.3
+              variables:
+                USER: $USER
+                SERVER: $SERVER
+                REMOTE_PATH: '/var/www/html/videosmergenestjs/dist'
+                LOCAL_PATH: 'dist/*'
+      - step:
+          name: Pm2 restart
+          script:
+            - ssh $USER@$SERVER "pm2 restart videosmergenestjs"
